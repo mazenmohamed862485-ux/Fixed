@@ -13,7 +13,7 @@ jobs:
 
     env:
       # غيّر المسار إذا كان الملف داخل مجلد آخر
-      ARCHIVE_PATH: "💩💩💩💩💩💩💩.zip"
+      ARCHIVE_PATH: "Mmmmm.zip"
       OUTPUT_DIR: "extracted_files"
 
     steps:
