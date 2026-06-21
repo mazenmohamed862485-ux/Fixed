@@ -1,0 +1,50 @@
+# .github/workflows/unzip-archive.yml
+name: Unzip archive from repo
+
+on:
+  workflow_dispatch:  # تشغيل يدوي من GitHub
+  push:
+    branches:
+      - main
+
+jobs:
+  extract-zip:
+    runs-on: ubuntu-latest
+
+    env:
+      # غيّر المسار إذا كان الملف داخل مجلد آخر
+      ARCHIVE_PATH: "💩💩💩💩💩💩💩.zip"
+      OUTPUT_DIR: "extracted_files"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Show files in repo
+        run: |
+          echo "Current repository files:"
+          ls -la
+
+      - name: Create output directory
+        run: |
+          mkdir -p "$OUTPUT_DIR"
+
+      - name: Extract zip archive
+        run: |
+          if [ ! -f "$ARCHIVE_PATH" ]; then
+            echo "File not found: $ARCHIVE_PATH"
+            exit 1
+          fi
+
+          unzip -o "$ARCHIVE_PATH" -d "$OUTPUT_DIR"
+
+      - name: Show extracted files
+        run: |
+          echo "Extracted files:"
+          find "$OUTPUT_DIR" -type f -print
+
+      - name: Upload extracted files as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: extracted-files
+          path: ${{ env.OUTPUT_DIR }}
