@@ -2,7 +2,7 @@
 name: Unzip archive from repo
 
 on:
-  workflow_dispatch:  # تشغيل يدوي من GitHub
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -12,7 +12,6 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      # غيّر المسار إذا كان الملف داخل مجلد آخر
       ARCHIVE_PATH: "Mmmmm.zip"
       OUTPUT_DIR: "extracted_files"
 
@@ -20,7 +19,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Show files in repo
+      - name: Show files in repo root
         run: |
           echo "Current repository files:"
           ls -la
@@ -29,13 +28,19 @@ jobs:
         run: |
           mkdir -p "$OUTPUT_DIR"
 
-      - name: Extract zip archive
+      - name: Check zip file exists
         run: |
           if [ ! -f "$ARCHIVE_PATH" ]; then
             echo "File not found: $ARCHIVE_PATH"
             exit 1
           fi
 
+      - name: Test zip archive
+        run: |
+          unzip -t "$ARCHIVE_PATH"
+
+      - name: Extract zip archive
+        run: |
           unzip -o "$ARCHIVE_PATH" -d "$OUTPUT_DIR"
 
       - name: Show extracted files
