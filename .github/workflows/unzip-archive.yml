@@ -1,55 +1,68 @@
 # .github/workflows/unzip-archive.yml
-name: Unzip archive from repo
+name: Unzip archive into repo root
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
+
+permissions:
+  contents: write
 
 jobs:
-  extract-zip:
+  extract-and-push:
     runs-on: ubuntu-latest
 
     env:
       ARCHIVE_PATH: "Mmmmm.zip"
-      OUTPUT_DIR: "extracted_files"
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: true
 
       - name: Show files in repo root
         run: |
-          echo "Current repository files:"
+          echo "Repository root files:"
           ls -la
 
-      - name: Create output directory
-        run: |
-          mkdir -p "$OUTPUT_DIR"
-
-      - name: Check zip file exists
+      - name: Verify archive exists
         run: |
           if [ ! -f "$ARCHIVE_PATH" ]; then
             echo "File not found: $ARCHIVE_PATH"
             exit 1
           fi
 
-      - name: Test zip archive
+      - name: Test archive
         run: |
           unzip -t "$ARCHIVE_PATH"
 
-      - name: Extract zip archive
+      - name: Extract archive to temp folder
         run: |
-          unzip -o "$ARCHIVE_PATH" -d "$OUTPUT_DIR"
+          mkdir -p temp_extract
+          unzip -o "$ARCHIVE_PATH" -d temp_extract
 
-      - name: Show extracted files
+      - name: Move extracted content to repository root
         run: |
-          echo "Extracted files:"
-          find "$OUTPUT_DIR" -type f -print
+          shopt -s dotglob
+          cp -R temp_extract/* .
+          rm -rf temp_extract
 
-      - name: Upload extracted files as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: extracted-files
-          path: ${{ env.OUTPUT_DIR }}
+      - name: Show files after extraction
+        run: |
+          echo "Files after moving extracted content to root:"
+          ls -la
+
+      - name: Commit and push changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add -A
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+
+          git commit -m "Extract Mmmmm.zip into repository root"
+          git push origin HEAD:main
