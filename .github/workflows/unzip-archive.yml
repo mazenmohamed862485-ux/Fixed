@@ -41,6 +41,10 @@ jobs:
           mkdir -p temp_extract
           unzip -o "$ARCHIVE_PATH" -d temp_extract
 
+      - name: Remove workflow files from extracted content
+        run: |
+          rm -rf temp_extract/.github/workflows
+
       - name: Move extracted content to repository root
         run: |
           shopt -s dotglob
