@@ -1,0 +1,86 @@
+name: CD — TO Best APK
+
+on:
+  push:
+    tags:
+      - 'v*.*.*-tobest'
+  workflow_dispatch:
+
+env:
+  APP_DIR: apps/tobest
+
+jobs:
+  build-android:
+    name: Build TO Best APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install Melos
+        run: dart pub global activate melos 2.9.0
+
+      - name: Create Secrets File
+        run: |
+          mkdir -p packages/shared/lib/config
+          printf 'class AppSecrets {\n  AppSecrets._();\n  static const String gasBaseUrl   = "%s";\n  static const String gasSecretKey = "%s";\n  static const String geminiApiKey = "%s";\n}\n' \
+            "$GAS_BASE_URL" "$GAS_SECRET_KEY" "$GEMINI_API_KEY" \
+            > packages/shared/lib/config/secrets.dart
+        env:
+          GAS_BASE_URL:   ${{ secrets.GAS_BASE_URL }}
+          GAS_SECRET_KEY: ${{ secrets.GAS_SECRET_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+
+      - name: Bootstrap
+        run: melos bootstrap
+
+      - name: Generate Code
+        run: melos run generate
+
+      - name: Create local.properties
+        run: |
+          echo "flutter.sdk=$FLUTTER_ROOT" > ${{ env.APP_DIR }}/android/local.properties
+          echo "flutter.versionCode=${{ github.run_number }}" >> ${{ env.APP_DIR }}/android/local.properties
+          echo "flutter.versionName=1.0.0" >> ${{ env.APP_DIR }}/android/local.properties
+          cat ${{ env.APP_DIR }}/android/local.properties
+
+      - name: Build Debug APK (verbose)
+        working-directory: ${{ env.APP_DIR }}
+        run: flutter build apk --debug --build-name=1.0.0 --build-number=${{ github.run_number }} -v
+
+      - name: Rename APK
+        run: |
+          BUILD="${{ github.run_number }}"
+          cp ${{ env.APP_DIR }}/build/app/outputs/flutter-apk/app-debug.apk \
+             tobest-debug-build${BUILD}.apk
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tobest-apk-${{ github.run_number }}
+          path: tobest-*.apk
+          retention-days: 30
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: tobest-*.apk
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Cleanup Secrets
+        if: always()
+        run: rm -f packages/shared/lib/config/secrets.dart
